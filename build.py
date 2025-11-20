@@ -6,7 +6,7 @@ import os
 INPUT_FILE = 'bookmarks_2025_11_20.html'
 OUTPUT_FILE = 'index.html'
 
-# 网页模板 (保持不变，但内容会被新的解析逻辑填充)
+# 网页模板 (保持美观的样式)
 HTML_HEADER = """
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -16,127 +16,44 @@ HTML_HEADER = """
     <title>我的个人导航</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
     <style>
-        :root { 
-            --primary: #3b82f6; 
-            --bg-page: #f3f4f6; 
-            --bg-sidebar: #ffffff;
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-        }
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--bg-page); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
-
-        /* 侧边栏 */
-        .sidebar { width: 240px; background: var(--bg-sidebar); border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; flex-shrink: 0; z-index: 20; }
-        .logo { padding: 24px; font-size: 20px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f3f4f6; }
+        :root { --primary: #3b82f6; --bg-page: #f3f4f6; --bg-sidebar: #ffffff; --text-main: #1f2937; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-page); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 240px; background: var(--bg-sidebar); border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { padding: 20px; font-size: 20px; font-weight: 800; color: var(--primary); border-bottom: 1px solid #f3f4f6; text-align: center; }
         .nav-scroll { flex: 1; overflow-y: auto; padding: 10px 0; }
-        .nav-link { display: block; padding: 12px 24px; color: var(--text-main); text-decoration: none; transition: 0.2s; font-size: 15px; border-left: 3px solid transparent; }
+        .nav-link { display: block; padding: 10px 20px; color: #4b5563; text-decoration: none; transition: 0.2s; font-size: 14px; border-left: 3px solid transparent; }
         .nav-link:hover, .nav-link.active { background: #eff6ff; color: var(--primary); border-left-color: var(--primary); font-weight: 500; }
-
-        /* 主内容区 */
-        .main { flex: 1; overflow-y: auto; padding: 30px 40px; scroll-behavior: smooth; position: relative; }
-
-        /* 搜索框 */
-        .search-container { position: sticky; top: 0; z-index: 10; background: var(--bg-page); padding-bottom: 20px; margin-bottom: 20px; }
-        .search-box { max-width: 600px; margin: 0 auto; position: relative; }
-        .search-input { width: 100%; padding: 16px 24px; padding-left: 50px; border-radius: 12px; border: 1px solid #e5e7eb; font-size: 16px; outline: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: 0.3s; box-sizing: border-box; background: white; }
-        .search-input:focus { border-color: var(--primary); box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1); }
-        .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 18px; }
-
-        /* 分类内容 */
-        .category { margin-bottom: 40px; scroll-margin-top: 100px; }
-        .cat-head { margin-bottom: 20px; display: flex; align-items: center; padding-bottom: 10px; border-bottom: 1px dashed #e5e7eb; }
-        .cat-title { font-size: 18px; font-weight: 600; color: var(--text-main); }
-        .cat-count { margin-left: 10px; background: #e5e7eb; color: var(--text-muted); padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-
-        /* 卡片网格 */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-        .card { background: white; padding: 16px; border-radius: 12px; display: flex; align-items: center; text-decoration: none; transition: 0.3s; border: 1px solid transparent; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border-color: #bfdbfe; }
-        .card-icon { width: 36px; height: 36px; margin-right: 16px; border-radius: 8px; object-fit: contain; background: #f9fafb; padding: 4px; box-sizing: border-box; flex-shrink: 0; }
-        .card-info { flex: 1; overflow: hidden; }
-        .card-text { font-weight: 500; font-size: 15px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+        .main { flex: 1; overflow-y: auto; padding: 30px 40px; position: relative; }
+        .search-box { max-width: 600px; margin: 0 auto 30px; }
+        .search-input { width: 100%; padding: 15px 20px; border-radius: 50px; border: 1px solid #e5e7eb; outline: none; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .category { margin-bottom: 40px; }
+        .cat-head { font-size: 18px; font-weight: 600; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px dashed #ccc; color: #374151; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .card { background: white; padding: 12px; border-radius: 8px; display: flex; align-items: center; text-decoration: none; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid transparent; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); border-color: var(--primary); }
+        .card-icon { width: 32px; height: 32px; margin-right: 12px; border-radius: 50%; background: #f3f4f6; object-fit: cover; flex-shrink: 0; }
+        .card-info { overflow: hidden; }
+        .card-text { font-size: 14px; font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
         .card-url { font-size: 12px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* 移动端适配 */
-        @media (max-width: 768px) {
-            body { flex-direction: column; overflow: auto; }
-            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; }
-            .nav-scroll { display: none; /* 移动端暂隐藏侧边导航，简化布局 */ }
-            .logo { justify-content: center; padding: 15px; }
-            .main { padding: 20px; }
-            .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
-            .card { flex-direction: column; text-align: center; padding: 15px 10px; }
-            .card-icon { margin-right: 0; margin-bottom: 10px; width: 40px; height: 40px; }
-        }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <div class="logo">
-            <span>🧭 导航站</span>
-        </div>
-        <div class="nav-scroll" id="nav-container">
-            </div>
+        <div class="logo">我的导航</div>
+        <div class="nav-scroll" id="nav-container"></div>
     </div>
-
     <div class="main">
-        <div class="search-container">
-            <div class="search-box">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="search-input" placeholder="输入关键词搜索书签，或回车搜索 Google..." id="searchInput">
-            </div>
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="搜索..." onkeydown="if(event.key==='Enter') window.open('https://www.google.com/search?q='+this.value)">
         </div>
-        <div id="content-container">
-            </div>
-
-        <footer style="text-align: center; margin-top: 50px; color: #9ca3af; font-size: 13px; padding-bottom: 20px;">
-            Generated by Python Script | Last Update: <span id="date-now"></span>
-        </footer>
+        <div id="content-container"></div>
     </div>
-
     <script>
-        // 设置日期
-        document.getElementById('date-now').innerText = new Date().toLocaleDateString();
-
-        // 搜索功能
-        const searchInput = document.getElementById('searchInput');
-        const cards = document.getElementsByClassName('card');
-
-        searchInput.addEventListener('keyup', function(e) {
-            const term = e.target.value.toLowerCase();
-
-            // 回车跳转Google
-            if (e.key === 'Enter' && term) {
-                window.open('https://www.google.com/search?q=' + encodeURIComponent(term), '_blank');
-                return;
-            }
-
-            // 本地过滤
-            for (let card of cards) {
-                const text = card.innerText.toLowerCase();
-                const category = card.closest('.category');
-
-                if (text.includes(term)) {
-                    card.style.display = "flex";
-                } else {
-                    card.style.display = "none";
-                }
-            }
-
-            // 隐藏空分类
-            document.querySelectorAll('.category').forEach(cat => {
-                const visibleCards = cat.querySelectorAll('.card[style="display: flex;"]');
-                const allCards = cat.querySelectorAll('.card');
-                const hasVisible = Array.from(allCards).some(c => c.style.display !== 'none');
-                cat.style.display = hasVisible ? 'block' : 'none';
-            });
-        });
-
-        // 激活侧边栏滚动高亮（简版）
+        // 简单的滚动监听
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
-                document.getElementById(this.getAttribute('href').substring(1)).scrollIntoView();
+                document.getElementById(this.getAttribute('href').substring(1)).scrollIntoView({ behavior: 'smooth' });
             });
         });
     </script>
@@ -147,10 +64,10 @@ HTML_HEADER = """
 
 def parse_bookmarks():
     if not os.path.exists(INPUT_FILE):
-        print(f"❌ 错误：找不到文件 {INPUT_FILE}，请确保它在项目根目录下！")
-        return
+        print(f"❌ 错误：找不到文件 {INPUT_FILE}")
+        return {}
 
-    # 1. 尝试使用不同的编码读取文件 (增强鲁棒性)
+    # 1. 读取文件
     content = ""
     for encoding in ['utf-8', 'gb18030', 'gbk']:
         try:
@@ -162,80 +79,51 @@ def parse_bookmarks():
             continue
 
     if not content:
-        print("❌ 无法读取文件，请检查文件编码")
-        return
+        print("❌ 无法读取文件内容")
+        return {}
 
     soup = BeautifulSoup(content, 'html.parser')
 
-    # 2. 提取数据 - V3 逻辑：抓取根目录链接到“快捷访问”，并递归抓取文件夹
+    # V8 策略：直接查找所有链接，不再关心 DL/DT 嵌套结构
+    all_links = soup.find_all('a')
+    print(f"🔍 调试：共扫描到 {len(all_links)} 个链接标签")
 
-    # 查找最外层的 <DL>
-    root_dl = soup.find('dl')
-    if not root_dl: return {}
-
-    # 找到 "书签栏" 对应的 <DT> 标签
-    main_dt = root_dl.find('dt', recursive=False)
-
-    # 如果找不到书签栏，就找第一个 <DL> 标签作为内容根目录
-    if main_dt and main_dt.find('h3', string=re.compile("书签栏")):
-        # 获取书签栏内部的 <DL> 标签，作为实际内容的根
-        content_root_dl = main_dt.find('dl', recursive=False)
-    else:
-        # 如果不是标准格式，就用最外层的 <DL>
-        content_root_dl = root_dl
-
-    if not content_root_dl: return {}
+    if not all_links:
+        print("❌ 严重错误：未找到任何链接，请确认文件是 HTML 书签格式。")
+        return {}
 
     data = {}
-    quick_links = []
+    count = 0
 
-    # 遍历内容根目录下的所有直接 <DT> 子项
-    for dt in content_root_dl.find_all('dt', recursive=False):
-        h3 = dt.find('h3', recursive=False)
-        a = dt.find('a', recursive=False)
+    for link in all_links:
+        title = link.text.strip()
+        url = link.get('href')
+        if not url: continue
 
-        if h3:
-            # 这是一个文件夹，递归提取它内部的所有链接
-            folder_name = h3.text.strip()
+        # 处理图标 (忽略 Base64 以防内存溢出)
+        icon = f"https://ui-avatars.com/api/?background=random&color=fff&name={title[0] if title else 'X'}&size=64"
 
-            # 注意：这里调用一个内部函数来递归获取所有链接，防止丢失嵌套文件夹的内容
-            def extract_all_links(node):
-                all_links = []
-                # 查找当前节点下的所有 <A> 标签
-                for link_tag in node.find_all('a'):
-                    title = link_tag.text.strip()
-                    if title:
-                        all_links.append({
-                            'title': title,
-                            'url': link_tag.get('href', '#'),
-                            'icon': link_tag.get('icon', '')
-                        })
-                return all_links
+        # 查找分类：向上找最近的一个 H3 标签
+        category = "快捷访问"
+        prev_header = link.find_previous('h3')
+        if prev_header:
+            cat_text = prev_header.text.strip()
+            # 如果标题不是“书签栏”，则使用该标题作为分类
+            if cat_text not in ["书签栏", "Bookmarks bar", "Bookmarks"]:
+                category = cat_text
 
-            # 从文件夹的紧邻 <DL> 标签开始提取
-            sub_dl = h3.find_next_sibling('dl')
-            if sub_dl:
-                links = extract_all_links(sub_dl)
-                if links:
-                    data[folder_name] = links
-                    print(
-                        f"   📂 发现分类: {folder_name} (包含 {len(links)} 个链接)")
+        # 添加到数据字典
+        if category not in data:
+            data[category] = []
 
-        elif a:
-            # 这是一个直接放在根目录下的链接
-            title = a.text.strip()
-            if title:
-                quick_links.append({
-                    'title': title,
-                    'url': a.get('href', '#'),
-                    'icon': a.get('icon', '')
-                })
+        data[category].append({
+            'title': title,
+            'url': url,
+            'icon': icon
+        })
+        count += 1
 
-    # 将快捷访问（根目录链接）放在最前面
-    if quick_links:
-        data = {"快捷访问": quick_links, **data}
-        print(f"   ⚡ 发现快捷访问链接: {len(quick_links)} 个")
-
+    print(f"🎉 解析成功：共整理出 {len(data)} 个分类，{count} 个链接。")
     return data
 
 
@@ -243,28 +131,29 @@ def generate_html(data):
     nav_html = ""
     content_html = ""
 
-    # ... (HTML generation logic remains the same)
-    for idx, (category, links) in enumerate(data.items()):
+    # 排序：确保“快捷访问”排在前面，其他按原顺序
+    categories = list(data.keys())
+    if "快捷访问" in categories:
+        categories.remove("快捷访问")
+        categories.insert(0, "快捷访问")
+
+    for idx, category in enumerate(categories):
+        links = data[category]
+        if not links: continue
+
         cat_id = f"cat-{idx}"
         nav_html += f'<a href="#{cat_id}" class="nav-link">{category}</a>\n'
 
         content_html += f'''
         <div id="{cat_id}" class="category">
-            <div class="cat-head">
-                <span class="cat-title">{category}</span>
-                <span class="cat-count">{len(links)}</span>
-            </div>
+            <div class="cat-head">{category} <span style="font-size:12px;color:#999">({len(links)})</span></div>
             <div class="grid">
         '''
 
         for link in links:
-            icon_src = link['icon']
-            if not icon_src:
-                icon_src = f"https://ui-avatars.com/api/?background=random&color=fff&name={link['title'][0]}&size=64"
-
             content_html += f'''
                 <a href="{link['url']}" target="_blank" class="card" title="{link['title']}">
-                    <img src="{icon_src}" class="card-icon" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?background=random&name={link['title'][0]}'">
+                    <img src="{link['icon']}" class="card-icon">
                     <div class="card-info">
                         <div class="card-text">{link['title']}</div>
                         <div class="card-url">{link['url']}</div>
@@ -273,23 +162,24 @@ def generate_html(data):
             '''
         content_html += '</div></div>\n'
 
-    # 组合最终HTML
-    final_html = HTML_HEADER.replace('', nav_html) \
-        .replace('', content_html)
+    final_html = HTML_HEADER.replace(
+        '<div class="nav-scroll" id="nav-container"></div>',
+        f'<div class="nav-scroll" id="nav-container">\n{nav_html}</div>') \
+        .replace('<div id="content-container"></div>',
+                 f'<div id="content-container">\n{content_html}</div>')
 
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         f.write(final_html)
-    print(f"🎉 网页生成完毕！请查看: {OUTPUT_FILE}")
+    print(f"🚀 网页文件 {OUTPUT_FILE} 已生成！")
 
 
 if __name__ == '__main__':
-    # 安装依赖提示
     try:
-        bookmarks_data = parse_bookmarks()
-        if bookmarks_data:
-            generate_html(bookmarks_data)
+        d = parse_bookmarks()
+        if d:
+            generate_html(d)
     except Exception as e:
-        print(f"❌ 发生错误: {e}")
+        print(f"❌ 程序出错: {e}")
         import traceback
 
         traceback.print_exc()
