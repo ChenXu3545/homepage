@@ -1,12 +1,14 @@
 import re
 from bs4 import BeautifulSoup
 import os
+import sys
 
 # === 配置区域 ===
-INPUT_FILE = 'bookmarks_2025_11_20.html'
+# V11 更新：使用用户上传的新文件
+INPUT_FILE = 'bookmarks_2025_11_21.html'
 OUTPUT_FILE = 'index.html'
 
-# 网页模板 (结构已简化，内容在生成时替换)
+# 网页模板 (保持美观的样式和功能)
 HTML_HEADER = """
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -106,14 +108,8 @@ def create_link_data(link_tag):
     title = link_tag.text.strip()
     if not title: return None
 
-    # V6 关键优化点：不再尝试加载 Base64 图标，直接获取 URL 或生成默认图标
-    icon = link_tag.get('icon', '')
-
-    # 强制将 Base64 编码的图标替换为默认的文字图标
-    if icon and icon.startswith('data:image'):
-        icon = f"https://ui-avatars.com/api/?background=random&color=fff&name={title[0] if title else 'X'}&size=64"
-    elif not icon:
-        icon = f"https://ui-avatars.com/api/?background=random&color=fff&name={title[0] if title else 'X'}&size=64"
+    # 使用统一的图标生成服务，避免 Base64 内存问题
+    icon = f"https://ui-avatars.com/api/?background=random&color=fff&name={title[0] if title else 'X'}&size=64"
 
     return {
         'title': title,
@@ -125,9 +121,10 @@ def create_link_data(link_tag):
 def parse_bookmarks():
     """解析书签文件并返回结构化数据"""
     if not os.path.exists(INPUT_FILE):
+        print(f"❌ 错误：找不到文件 {INPUT_FILE}")
         return {}
 
-    # 1. 尝试使用不同的编码读取文件 (增加 GB18030 兼容性)
+    # 1. 尝试使用不同的编码读取文件
     content = ""
     for encoding in ['utf-8', 'gb18030', 'gbk']:
         try:
@@ -142,26 +139,28 @@ def parse_bookmarks():
         print("❌ 无法读取文件内容")
         return {}
 
-    # 使用 'html.parser' 解析
-    soup = BeautifulSoup(content, 'lxml')  # <--- V8 重点：切换至 lxml 解析器
+    # 2. V11 核心：使用 lxml 解析器进行线性扫描
+    try:
+        soup = BeautifulSoup(content, 'lxml')
+    except Exception as e:
+        print(f"❌ 使用 lxml 解析器时出错: {e}")
+        return {}
 
-    # 2. V8 策略：直接查找所有链接标签，并根据最近的 H3 标题进行归类 (线性扫描)
     all_links = soup.find_all('a')
     print(f"🔍 调试：共扫描到 {len(all_links)} 个链接标签")
 
-    if len(all_links) < 10:  # 如果链接数量少于10个，可能解析还是失败
+    if len(all_links) < 1:
         print("❌ 解析失败或文件内容为空。请检查书签文件！")
         return {}
 
     data = {}
-    count = 0
 
     for link in all_links:
         link_data = create_link_data(link)
         if not link_data: continue
 
         # 查找分类：向上找最近的一个 H3 标签
-        category = "快捷访问"  # 默认分类
+        category = "未分类"
         header = link.find_previous('h3')
         if header:
             cat_text = header.text.strip()
@@ -175,16 +174,15 @@ def parse_bookmarks():
             data[category] = []
 
         data[category].append(link_data)
-        count += 1
-
-    print(f"🎉 解析成功：共整理出 {len(data)} 个分类，{count} 个有效链接。")
 
     # 3. 组织最终数据 (确保“快捷访问”排在最前)
     final_data = {}
     if "快捷访问" in data:
-        final_data["快捷访问"] = data.pop("快捷访问")
+        final_data["快捷访问"] = data.pop("快捷访问")  # 先放快捷访问
 
-    final_data.update(data)  # 添加其余分类
+    final_data.update(data)  # 再放其余分类
+
+    print(f"🎉 解析成功：共整理出 {len(final_data)} 个分类。")
 
     return final_data
 
@@ -233,19 +231,21 @@ def generate_html(data):
 
 if __name__ == '__main__':
     try:
-        # V8 确保安装了 lxml
         import lxml
 
         bookmarks_data = parse_bookmarks()
         if bookmarks_data:
             generate_html(bookmarks_data)
         else:
-            print("❌ 解析失败，请检查书签文件内容或结构。")
+            print(
+                "❌ 致命错误：解析失败，生成的 index.html 可能是空的。请检查文件和 lxml 安装情况。")
     except ImportError:
-        print("⚠️ 缺少 lxml 库！请运行: pip install lxml")
+        print(
+            "⚠️ 缺少 lxml 库！这是解决解析问题的关键。请务必运行: pip install lxml")
+        sys.exit(1)  # 强制退出，提醒用户安装
     except Exception as e:
-        # 捕获所有潜在错误，包括 NameError 和 MemoryError
         print(f"❌ 发生致命错误: {e}")
         import traceback
 
         traceback.print_exc()
+        sys.exit(1)
